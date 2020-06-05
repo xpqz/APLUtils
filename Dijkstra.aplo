@@ -1,0 +1,101 @@
+Dijkstra←{ ⍝ Monadic operator: start (n Dijkstra) end
+
+⍝ Dijkstra's cheapest path algorithm.
+⍝
+⍝ Returns the lowest cost path from start to end, given n.
+⍝
+⍝ See https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm
+⍝
+⍝ The operand function should return a vector of items reachable 
+⍝ from its right argument, paired with costs. For example, 
+⍝ given the graph:
+⍝
+⍝
+⍝        +-+      5      +-+   3   +-+
+⍝        |2|<----------->|1|<----->|3|
+⍝        +-+             +-+       +-+
+⍝         ^               ^         ^ 
+⍝         | 4             | 1       | 
+⍝         v               v       7 | 
+⍝        +-+  2  +-+  2  +-+        | 
+⍝        |5|<--->|6|<--->|4|<-------+ 
+⍝        +-+     +-+     +-+     
+⍝ 
+⍝ n 1
+⍝ ┌→──────────────────┐
+⍝ │ ┌→──┐ ┌→──┐ ┌→──┐ │
+⍝ │ │2 5│ │3 3│ │4 1│ │
+⍝ │ └~──┘ └~──┘ └~──┘ │
+⍝ └∊──────────────────┘
+⍝
+⍝ The first element of each item should be a scalar.
+⍝ 
+⍝ If all costs are 1, the operator returns the shortest path
+⍝ in terms of number of vertices visited.
+⍝
+⍝ We can express the graph above as an adjacency matrix g:
+⍝ ┌→──────────┐
+⍝ ↓0 5 3 1 0 0│
+⍝ │5 0 0 0 4 0│
+⍝ │3 0 0 7 0 0│
+⍝ │1 0 7 0 0 2│
+⍝ │0 4 0 0 0 2│
+⍝ │0 0 0 2 2 0│
+⍝ └~──────────┘
+⍝
+⍝ and the corresponding n function:
+⍝ 
+⍝ n←{v,¨⍺[⍵;v←⍸0≠⍵⌷⍺]}
+⍝
+⍝ g n 1
+⍝ ┌→──────────────────┐
+⍝ │ ┌→──┐ ┌→──┐ ┌→──┐ │
+⍝ │ │2 5│ │3 3│ │4 1│ │
+⍝ │ └~──┘ └~──┘ └~──┘ │
+⍝ └∊──────────────────┘
+⍝
+⍝ To find the cheapest path from 1 to 5 we run
+⍝ 
+⍝ 1 (g∘n Dijkstra) 5 ⍝ cost 5
+⍝ ┌→────┐
+⍝ │4 6 5│
+⍝ └~────┘
+⍝
+⍝ g[1;4]←10          ⍝ Increase cost of the 1-4 edge
+⍝ 1 (g∘N Dijkstra) 5 ⍝ Cheapest is now 1-2-5 at 9
+⍝ ┌→──┐
+⍝ │2 5│
+⍝ └~──┘
+
+    start←⍺⋄end←⍵
+    costKeys←1500⌶,start
+    costVals←,0
+    Cost←{⍵∊costKeys:costVals[⊃costKeys⍳⍵]⋄⌊/⍬}
+    cameFromKeys←1500⌶,start
+    cameFromVals←,start
+    Next←⍺⍺
+    _←{
+        (frontier queueItem)←##.heapq.Pop ⍵
+        current←2⊃⊃queueItem
+        current≡end:⍬
+        currentCost←Cost current
+        neighbours←Next current
+        valid←{(item cost)←⍵⋄(currentCost+cost)<Cost⊂item}¨neighbours
+        frontier {
+            0=≢⍵:⍺
+            (vertex cost)←⊃1↑⍵
+            newCost←cost+currentCost
+            queue←⍺ ##.heapq.Push ⊂newCost(⊂vertex)
+            cameFromKeys,←⊂vertex
+            cameFromVals,←current
+            (⊂vertex)∊costKeys:queue∇(1↓⍵)⊣costVals[⊃costKeys⍳⊂vertex]←newCost
+            costKeys,←⊂vertex ⋄ costVals,←newCost
+            queue∇1↓⍵   
+        } valid/neighbours
+    }⍣{##.heapq.Empty ⍺} ##.heapq.Push⊂0 start
+
+    ⍝ Reconstruct the path
+    path←⍬
+    _←{path,←⍵⋄cameFromVals[⊃cameFromKeys⍳⍵]}⍣{start≡⍺} end
+    ⊖path
+}
